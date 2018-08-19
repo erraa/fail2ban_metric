@@ -8,13 +8,15 @@ import (
 	"strings"
 	"time"
 
+	//"./config"
+	"github.com/erraa/failban_metric/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
-	fail2banlog string = "./fail2ban.log"
-	timesBanned int    = 0
+	fail2banlog string
+	timesBanned int = 0
 )
 
 var (
@@ -68,9 +70,12 @@ func init() {
 }
 
 func main() {
+	var c config.Conf
+	c.Parse("./config.yaml")
+	fail2banlog = c.FailToBanLoc
 	go func() {
 		for {
-			timesBannedprom.With(prometheus.Labels{"device": "firewall"}).Add(parseLog())
+			timesBannedprom.With(prometheus.Labels{"device": c.DeviceName}).Add(parseLog())
 			time.Sleep(time.Second * 2)
 		}
 	}()
