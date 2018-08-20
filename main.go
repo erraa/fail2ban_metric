@@ -9,7 +9,7 @@ import (
 	"time"
 
 	//"./config"
-	"github.com/erraa/failban_metric/config"
+	"github.com/erraa/fail2ban_metric/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
