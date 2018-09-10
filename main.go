@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"log"
 	"net/http"
-	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,32 +37,24 @@ func scan(s string) (bool, string) {
 	}
 }
 
-func parseLog() float64 {
-	file, err := os.Open(fail2banlog)
+func parseCmd() float64 {
+	cmd := exec.Command("fail2ban-client", "status")
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		panic("couldnt open fail2banlog")
+		panic(err)
 	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	bans := []string{}
-	for scanner.Scan() {
-		result, line := scan(scanner.Text())
-		if result {
-			bans = append(bans, line)
+	outputs := strings.Split(string(output), "\n")
+	for _, v := range outputs {
+		if strings.Contains(v, ":") {
+			numTimes := strings.TrimSpace(strings.Split(v, ":")[1])
+			numTimesInt, err := strconv.Atoi(numTimes)
+			if err != nil {
+				panic(err)
+			}
+			return float64(numTimesInt)
 		}
 	}
-
-	if timesBanned == 0 {
-		timesBanned = len(bans)
-		return float64(len(bans))
-	} else if len(bans) == timesBanned {
-		return float64(0)
-	} else {
-		return_value := len(bans) - timesBanned
-		timesBanned = len(bans)
-		return float64(return_value)
-	}
+	panic("Parsing failed")
 }
 
 func init() {
@@ -75,8 +67,8 @@ func main() {
 	fail2banlog = c.FailToBanLoc
 	go func() {
 		for {
-			timesBannedprom.With(prometheus.Labels{"device": c.DeviceName}).Add(parseLog())
-			time.Sleep(time.Second * 2)
+			timesBannedprom.With(prometheus.Labels{"device": c.DeviceName}).Add(parseCmd())
+			time.Sleep(time.Second * 10)
 		}
 	}()
 	http.Handle("/metrics", promhttp.Handler())
