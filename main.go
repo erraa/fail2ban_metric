@@ -20,8 +20,8 @@ var (
 )
 
 var (
-	timesBannedprom = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
+	timesBannedprom = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
 			Name: "times_banned",
 			Help: "Number of times someone has tried to hack the machine",
 		},
@@ -38,14 +38,14 @@ func scan(s string) (bool, string) {
 }
 
 func parseCmd() float64 {
-	cmd := exec.Command("fail2ban-client", "status")
+	cmd := exec.Command("fail2ban-client", "status", "sshd")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		panic(err)
 	}
 	outputs := strings.Split(string(output), "\n")
 	for _, v := range outputs {
-		if strings.Contains(v, ":") {
+		if strings.Contains(v, "Total banned") {
 			numTimes := strings.TrimSpace(strings.Split(v, ":")[1])
 			numTimesInt, err := strconv.Atoi(numTimes)
 			if err != nil {
@@ -54,7 +54,7 @@ func parseCmd() float64 {
 			return float64(numTimesInt)
 		}
 	}
-	panic("Parsing failed")
+	return float64(0)
 }
 
 func init() {
@@ -67,7 +67,7 @@ func main() {
 	fail2banlog = c.FailToBanLoc
 	go func() {
 		for {
-			timesBannedprom.With(prometheus.Labels{"device": c.DeviceName}).Add(parseCmd())
+			timesBannedprom.WithLabelValues(c.DeviceName).Set(parseCmd())
 			time.Sleep(time.Second * 10)
 		}
 	}()
